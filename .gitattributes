@@ -1,0 +1,13 @@
+# Force LF for shell scripts (critical for pi-gen Linux builds)
+*.sh text eol=lf
+build/config text eol=lf
+build/stage-pwnagotchi/**/* text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Binary files
+*.img binary
+*.img.xz binary
+*.img.gz binary
+*.onnx binary
+*.zip binary
