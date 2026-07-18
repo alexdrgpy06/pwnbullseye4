@@ -31,7 +31,7 @@ fi
 
 # Create the patched on_chroot function
 # We use python to do a reliable multi-line replacement
-python3 << 'PYEOF'
+python3 - "$COMMON" << 'PYEOF'
 import re
 import sys
 
