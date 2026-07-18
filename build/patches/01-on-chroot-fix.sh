@@ -41,8 +41,8 @@ with open(common_path, 'r') as f:
     content = f.read()
 
 # Pattern to match the entire on_chroot function
-# It starts with "on_chroot()" and ends before "export -f on_chroot"
-old_pattern = r'on_chroot\(\)\s*\{[^}]*\}\s*\nexport -f on_chroot'
+# It starts with "on_chroot()" and ends with "export -f on_chroot"
+old_pattern = r'on_chroot\(\)\s*\{.*?\nexport -f on_chroot'
 
 new_function = '''on_chroot() {
 \t# PATCHED: plain chroot for binfmt_misc compatibility (no capsh)
@@ -75,12 +75,8 @@ export -f on_chroot'''
 new_content = re.sub(old_pattern, new_function, content, flags=re.DOTALL)
 
 if new_content == content:
-    print("WARNING: Pattern not matched, trying simpler replacement...")
-    # Simpler approach: just replace the capsh line
-    new_content = content.replace(
-        'capsh $CAPSH_ARG -- -c "',
-        'DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true HOME=/root PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin LC_ALL=C LANG=C chroot "${ROOTFS_DIR}" '
-    )
+    print("ERROR: Regex did not match on_chroot function in scripts/common", file=sys.stderr)
+    sys.exit(1)
 
 with open(common_path, 'w') as f:
     f.write(new_content)
