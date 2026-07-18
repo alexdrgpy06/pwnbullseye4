@@ -27,10 +27,10 @@ for stage in stage3 stage4 stage5; do
     fi
 done
 
-# Symlink our custom stage into pi-gen
+# Copy our custom stage into pi-gen (Docker build doesn't support symlinks pointing outside the volume)
 if [ -d "${STAGE_SRC}" ]; then
-    ln -sfn "$(realpath "${STAGE_SRC}")" "${PIGEN_DIR}/stage-pwnagotchi"
-    echo "Linked stage-pwnagotchi → ${STAGE_SRC}"
+    cp -r "${STAGE_SRC}" "${PIGEN_DIR}/stage-pwnagotchi"
+    echo "Copied stage-pwnagotchi → ${PIGEN_DIR}/stage-pwnagotchi"
 else
     echo "ERROR: Stage source not found: ${STAGE_SRC}"
     exit 1
