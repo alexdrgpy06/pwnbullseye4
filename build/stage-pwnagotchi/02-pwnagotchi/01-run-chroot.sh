@@ -33,14 +33,12 @@ fi
 echo -e "\e[32m=== Setting up Python venv ===\e[0m"
 python3 -m venv /opt/.pwn/ --system-site-packages
 
-# Install pwnagotchi in venv
-source /opt/.pwn/bin/activate
-pip3 cache purge 2>/dev/null || true
-pip3 install --no-cache-dir . || {
-    echo -e "\e[33m=== pip install failed, trying with --break-system-packages ===\e[0m"
-    pip3 install --no-cache-dir --break-system-packages .
+# Install pwnagotchi in venv using explicit path to avoid 'source' issues in /bin/sh
+/opt/.pwn/bin/pip3 cache purge 2>/dev/null || true
+/opt/.pwn/bin/pip3 install --no-cache-dir . || {
+    echo -e "\e[33m=== pip install failed, trying without cache ===\e[0m"
+    /opt/.pwn/bin/pip3 install .
 }
-deactivate
 
 # Create symlink
 ln -sf /opt/.pwn/bin/pwnagotchi /usr/bin/pwnagotchi

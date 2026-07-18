@@ -14,14 +14,14 @@ install -v -d "${ROOTFS_DIR}/etc/pwnagotchi/sessions/"
 install -v -d "${ROOTFS_DIR}/usr/local/share/pwnagotchi/custom-plugins/"
 
 # Copy config files from our files/ directory
-install -v -m 644 "${SUB_STAGE_DIR}/files/defaults.toml" \
+install -v -m 644 files/defaults.toml \
     "${ROOTFS_DIR}/etc/pwnagotchi/default.toml"
 
-install -v -m 644 "${SUB_STAGE_DIR}/files/config.toml.example" \
+install -v -m 644 files/config.toml.example \
     "${ROOTFS_DIR}/etc/pwnagotchi/config.toml"
 
 # Install WPA-Sec plugin
-install -v -m 644 "${SUB_STAGE_DIR}/files/wpa_sec.py" \
+install -v -m 644 files/wpa_sec.py \
     "${ROOTFS_DIR}/usr/local/share/pwnagotchi/custom-plugins/wpa-sec.py"
 
 # Create systemd service for pwnagotchi
