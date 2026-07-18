@@ -111,6 +111,9 @@ jobs:
           # Set up stage structure
           bash build/patches/02-stage-setup.sh pi-gen "$(pwd)/build/stage-pwnagotchi"
 
+          # Fix pi-gen export-image prerun.sh invalid ext4 feature
+          bash build/patches/03-export-image-fix.sh pi-gen
+
           # Verify stage-pwnagotchi is linked
           ls -la pi-gen/stage-pwnagotchi/
 
