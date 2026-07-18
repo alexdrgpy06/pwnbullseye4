@@ -35,17 +35,26 @@ jobs:
             img_suffix: armhf
           - arch: armv7
             img_suffix: armv7
-    # Skip architecture if user specified a different one
-    if: >-
-      github.event_name != 'workflow_dispatch' ||
-      inputs.arch == '' ||
-      inputs.arch == matrix.arch
-
     steps:
+      - name: Check if this arch should build
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && \
+             [ -n "${{ inputs.arch }}" ] && \
+             [ "${{ inputs.arch }}" != "${{ matrix.arch }}" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Skipping ${{ matrix.arch }} (user requested ${{ inputs.arch }} only)"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "Building ${{ matrix.arch }}"
+          fi
+
       - name: Checkout repository
+        if: steps.check.outputs.skip != 'true'
         uses: actions/checkout@v4
 
       - name: Free up disk space
+        if: steps.check.outputs.skip != 'true'
         run: |
           echo "=== Disk before cleanup ==="
           df -h /
@@ -63,6 +72,7 @@ jobs:
           df -h /
 
       - name: Install build dependencies
+        if: steps.check.outputs.skip != 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -73,6 +83,7 @@ jobs:
             arch-test qemu-utils
 
       - name: Set up QEMU binfmt
+        if: steps.check.outputs.skip != 'true'
         run: |
           # Ensure ARM binary execution works via QEMU
           sudo update-binfmts --enable qemu-arm || true
@@ -85,11 +96,13 @@ jobs:
           fi
 
       - name: Clone pi-gen (bullseye branch)
+        if: steps.check.outputs.skip != 'true'
         run: |
           git clone --depth 1 --branch "$PIGEN_BRANCH" "$PIGEN_REPO" pi-gen
           echo "Pi-gen cloned at $(cd pi-gen && git log -1 --format='%h %s')"
 
       - name: Apply patches to pi-gen
+        if: steps.check.outputs.skip != 'true'
         run: |
           # Fix on_chroot to use plain chroot (not capsh)
           chmod +x build/patches/*.sh
@@ -102,6 +115,7 @@ jobs:
           ls -la pi-gen/stage-pwnagotchi/
 
       - name: Write pi-gen config
+        if: steps.check.outputs.skip != 'true'
         run: |
           cp build/config pi-gen/config
           # Append arch-specific settings
@@ -113,6 +127,7 @@ jobs:
           cat pi-gen/config
 
       - name: Build image with pi-gen
+        if: steps.check.outputs.skip != 'true'
         run: |
           cd pi-gen
 
@@ -129,6 +144,7 @@ jobs:
           fi
 
       - name: Locate and rename output image
+        if: steps.check.outputs.skip != 'true'
         id: image
         run: |
           echo "=== Looking for built images ==="
@@ -170,6 +186,7 @@ jobs:
           cat "${FINAL_NAME}.sha256"
 
       - name: Upload image artifact
+        if: steps.check.outputs.skip != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: pwnbullseye4-${{ matrix.img_suffix }}
