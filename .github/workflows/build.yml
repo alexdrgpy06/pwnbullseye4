@@ -101,6 +101,12 @@ jobs:
           git clone --depth 1 --branch "$PIGEN_BRANCH" "$PIGEN_REPO" pi-gen
           echo "Pi-gen cloned at $(cd pi-gen && git log -1 --format='%h %s')"
 
+      - name: Clone jayofelony pwnagotchi repo
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          git clone --depth 1 https://github.com/jayofelony/pwnagotchi.git pwnagotchi_src
+          echo "Pwnagotchi cloned"
+
       - name: Apply patches to pi-gen
         if: steps.check.outputs.skip != 'true'
         run: |
@@ -108,14 +114,14 @@ jobs:
           chmod +x build/patches/*.sh
           bash build/patches/01-on-chroot-fix.sh pi-gen
 
-          # Set up stage structure
-          bash build/patches/02-stage-setup.sh pi-gen "$(pwd)/build/stage-pwnagotchi"
+          # Set up stage structure using official jayofelony stage3
+          bash build/patches/02-stage-setup.sh pi-gen "$(pwd)/pwnagotchi_src/stage3"
 
           # Fix pi-gen export-image prerun.sh invalid ext4 feature
           bash build/patches/03-export-image-fix.sh pi-gen
 
-          # Verify stage-pwnagotchi is linked
-          ls -la pi-gen/stage-pwnagotchi/
+          # Verify stage3 is copied
+          ls -la pi-gen/stage3/
 
       - name: Write pi-gen config
         if: steps.check.outputs.skip != 'true'

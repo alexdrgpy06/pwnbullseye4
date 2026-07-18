@@ -19,8 +19,8 @@ KEYBOARD_LAYOUT="English (US)"
 TIMEZONE_DEFAULT=UTC
 
 # Build stages - stage0-2 from official pi-gen, then our custom stage
-# stage-pwnagotchi is symlinked in by the build workflow
-STAGE_LIST="stage0 stage1 stage2 stage-pwnagotchi"
+# stage3 is copied from jayofelony/pwnagotchi by the build workflow
+STAGE_LIST="stage0 stage1 stage2 stage3"
 
 # Output
 DEPLOY_COMPRESSION=xz
