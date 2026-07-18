@@ -24,6 +24,26 @@ install -v -m 644 files/config.toml.example \
 install -v -m 644 files/wpa_sec.py \
     "${ROOTFS_DIR}/usr/local/share/pwnagotchi/custom-plugins/wpa-sec.py"
 
+# Configure /boot/config.txt and /boot/cmdline.txt for hardware (SPI, I2C, gadget mode)
+echo "dtparam=spi=on" >> "${ROOTFS_DIR}/boot/config.txt"
+echo "dtparam=i2c_arm=on" >> "${ROOTFS_DIR}/boot/config.txt"
+echo "dtparam=i2c_vc=on" >> "${ROOTFS_DIR}/boot/config.txt"
+echo "enable_uart=1" >> "${ROOTFS_DIR}/boot/config.txt"
+echo "dtoverlay=dwc2" >> "${ROOTFS_DIR}/boot/config.txt"
+
+# Ensure dwc2 is in modules
+if ! grep -q "dwc2" "${ROOTFS_DIR}/etc/modules"; then
+    echo "dwc2" >> "${ROOTFS_DIR}/etc/modules"
+fi
+if ! grep -q "g_ether" "${ROOTFS_DIR}/etc/modules"; then
+    echo "g_ether" >> "${ROOTFS_DIR}/etc/modules"
+fi
+
+# Add modules-load=dwc2,g_ether to cmdline.txt
+if ! grep -q "modules-load=dwc2,g_ether" "${ROOTFS_DIR}/boot/cmdline.txt"; then
+    sed -i 's/rootwait/rootwait modules-load=dwc2,g_ether/' "${ROOTFS_DIR}/boot/cmdline.txt"
+fi
+
 # Create systemd service for pwnagotchi
 cat > "${ROOTFS_DIR}/etc/systemd/system/pwnagotchi.service" << 'SYSTEMD'
 [Unit]
