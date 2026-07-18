@@ -1,0 +1,29 @@
+#!/bin/bash
+# PwnBullseye4 - Pi-gen build configuration
+# Used by pi-gen's build-docker.sh / build.sh
+
+IMG_NAME='pwnbullseye4'
+RELEASE=bullseye
+TARGET_HOSTNAME=pwnbullseye4
+
+# User
+FIRST_USER_NAME=pi
+FIRST_USER_PASS=raspberry
+ENABLE_SSH=1
+
+# Locale
+LOCALE_DEFAULT=en_US.UTF-8
+KEYBOARD_KEYMAP=us
+KEYBOARD_LAYOUT="English (US)"
+TIMEZONE_DEFAULT=UTC
+
+# Build stages - stage0-2 from official pi-gen, then our custom stage
+# stage-pwnagotchi is symlinked in by the build workflow
+STAGE_LIST="stage0 stage1 stage2 stage-pwnagotchi"
+
+# Output
+DEPLOY_COMPRESSION=xz
+DEPLOY_ZIP=0
+
+# Network
+WPA_COUNTRY=US

@@ -1,0 +1,3 @@
+# Place pre-trained models here
+# Supported formats: .onnx (recommended), .zip (stable-baselines3)
+# Models are excluded from git (too large) - see .gitignore

@@ -1,0 +1,222 @@
+name: Build PwnBullseye4 Images
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+  workflow_dispatch:
+    inputs:
+      arch:
+        description: 'Architecture to build (leave empty for both)'
+        required: false
+        default: ''
+        type: choice
+        options:
+          - ''
+          - armhf
+          - armv7
+
+env:
+  PIGEN_REPO: https://github.com/RPi-Distro/pi-gen.git
+  PIGEN_BRANCH: bullseye
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: armhf
+            img_suffix: armhf
+          - arch: armv7
+            img_suffix: armv7
+    # Skip architecture if user specified a different one
+    if: >-
+      github.event_name != 'workflow_dispatch' ||
+      inputs.arch == '' ||
+      inputs.arch == matrix.arch
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Free up disk space
+        run: |
+          echo "=== Disk before cleanup ==="
+          df -h /
+          # Remove large preinstalled packages we don't need
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/lib/android
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /opt/hostedtoolcache
+          sudo rm -rf /usr/local/share/boost
+          sudo rm -rf /usr/share/swift
+          sudo apt-get -y purge google-cloud-* dotnet-* aspnetcore-* 2>/dev/null || true
+          sudo apt-get -y autoremove 2>/dev/null || true
+          sudo apt-get clean
+          echo "=== Disk after cleanup ==="
+          df -h /
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            coreutils quilt parted qemu-user-static debootstrap \
+            zerofree zip dosfstools libarchive-tools libcap2-bin \
+            rsync grep udev xz-utils curl xxd file kmod bc \
+            binfmt-support ca-certificates fdisk gpg pigz \
+            arch-test qemu-utils
+
+      - name: Set up QEMU binfmt
+        run: |
+          # Ensure ARM binary execution works via QEMU
+          sudo update-binfmts --enable qemu-arm || true
+          # Verify
+          if [ -f /proc/sys/fs/binfmt_misc/qemu-arm ]; then
+            echo "qemu-arm binfmt registered"
+            cat /proc/sys/fs/binfmt_misc/qemu-arm
+          else
+            echo "WARNING: qemu-arm binfmt not registered, build may fail"
+          fi
+
+      - name: Clone pi-gen (bullseye branch)
+        run: |
+          git clone --depth 1 --branch "$PIGEN_BRANCH" "$PIGEN_REPO" pi-gen
+          echo "Pi-gen cloned at $(cd pi-gen && git log -1 --format='%h %s')"
+
+      - name: Apply patches to pi-gen
+        run: |
+          # Fix on_chroot to use plain chroot (not capsh)
+          chmod +x build/patches/*.sh
+          bash build/patches/01-on-chroot-fix.sh pi-gen
+
+          # Set up stage structure
+          bash build/patches/02-stage-setup.sh pi-gen "$(pwd)/build/stage-pwnagotchi"
+
+          # Verify stage-pwnagotchi is linked
+          ls -la pi-gen/stage-pwnagotchi/
+
+      - name: Write pi-gen config
+        run: |
+          cp build/config pi-gen/config
+          # Append arch-specific settings
+          if [ "${{ matrix.arch }}" = "armv7" ]; then
+            echo "" >> pi-gen/config
+            echo "# ARMv7 optimizations for Pi Zero 2 W" >> pi-gen/config
+          fi
+          echo "=== Config ==="
+          cat pi-gen/config
+
+      - name: Build image with pi-gen
+        run: |
+          cd pi-gen
+
+          # Make all scripts executable
+          find . -name "*.sh" -exec chmod +x {} \;
+
+          # Use pi-gen's Docker build method
+          if [ -f build-docker.sh ]; then
+            echo "=== Using build-docker.sh ==="
+            sudo ./build-docker.sh
+          else
+            echo "=== Using build.sh directly ==="
+            sudo ./build.sh
+          fi
+
+      - name: Locate and rename output image
+        id: image
+        run: |
+          echo "=== Looking for built images ==="
+          find pi-gen/deploy -name "*.img*" -o -name "*.zip" 2>/dev/null | head -20
+
+          # Find the image file
+          IMG=$(find pi-gen/deploy -name "*.img.xz" -o -name "*.img.gz" -o -name "*.img.zip" | head -1)
+
+          if [ -z "$IMG" ]; then
+            # Try uncompressed
+            IMG=$(find pi-gen/deploy -name "*.img" | head -1)
+            if [ -n "$IMG" ]; then
+              echo "Compressing image..."
+              xz -9 -T0 "$IMG"
+              IMG="${IMG}.xz"
+            fi
+          fi
+
+          if [ -z "$IMG" ]; then
+            echo "ERROR: No image found in deploy/"
+            find pi-gen/deploy -type f
+            exit 1
+          fi
+
+          # Rename with date and arch
+          DATE=$(date +%Y%m%d)
+          FINAL_NAME="pwnbullseye4-${{ matrix.img_suffix }}-${DATE}.img.xz"
+          cp "$IMG" "${FINAL_NAME}"
+
+          echo "image_path=${FINAL_NAME}" >> "$GITHUB_OUTPUT"
+          echo "image_name=${FINAL_NAME}" >> "$GITHUB_OUTPUT"
+
+          # Generate SHA256
+          sha256sum "${FINAL_NAME}" > "${FINAL_NAME}.sha256"
+          echo "sha256_path=${FINAL_NAME}.sha256" >> "$GITHUB_OUTPUT"
+
+          echo "=== Built: ${FINAL_NAME} ==="
+          ls -lh "${FINAL_NAME}"
+          cat "${FINAL_NAME}.sha256"
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pwnbullseye4-${{ matrix.img_suffix }}
+          path: |
+            ${{ steps.image.outputs.image_path }}
+            ${{ steps.image.outputs.sha256_path }}
+          retention-days: 30
+
+  release:
+    needs: build
+    runs-on: ubuntu-24.04
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: PwnBullseye4 Build ${{ github.run_number }}
+          body: |
+            ## PwnBullseye4 Build ${{ github.run_number }}
+
+            Built from commit ${{ github.sha }}
+
+            ### Images
+            | Image | Architecture | Device |
+            |-------|-------------|--------|
+            | `pwnbullseye4-armhf-*.img.xz` | armhf (32-bit) | Pi Zero W |
+            | `pwnbullseye4-armv7-*.img.xz` | armv7 (32-bit) | Pi Zero 2 W |
+
+            ### Flash
+            ```bash
+            xzcat pwnbullseye4-*.img.xz | sudo dd of=/dev/sdX bs=4M status=progress
+            ```
+
+            ### Default credentials
+            - User: `pi` / Password: `raspberry`
+            - SSH enabled by default
+          files: |
+            pwnbullseye4-*.img.xz
+            pwnbullseye4-*.sha256
+          draft: false
+          prerelease: false

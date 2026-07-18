@@ -1,0 +1,35 @@
+# PwnBullseye4 AI Training Requirements
+# Install with: pip install -r requirements.txt
+
+# Core ML
+torch==2.1.0
+torchvision==0.16.0
+torchaudio==2.1.0
+
+# Reinforcement Learning
+stable-baselines3[extra]==2.0.0
+gymnasium==0.29.0
+
+# ONNX Export & Runtime
+onnx==1.15.0
+onnxruntime==1.17.0
+onnxruntime-tools==1.17.0
+
+# Data & Config
+numpy==1.26.0
+pandas==2.1.0
+pyyaml==6.0.1
+toml==0.10.2
+
+# Utilities
+tqdm==4.66.0
+requests==2.31.0
+psutil==5.9.0
+
+# Optional: Quantization
+# onnxruntime-training==1.17.0  # For quantization (large)
+
+# Development
+pytest==7.4.0
+black==23.0.0
+flake8==6.0.0

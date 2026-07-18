@@ -1,0 +1,57 @@
+# Build artifacts
+build/pi-gen/
+build/work/
+build/deploy/
+build/output/
+*.img
+*.img.xz
+*.img.gz
+*.img.zip
+
+# Prior session artifacts (not needed in clean repo)
+build/pi-gen-fixed/
+build/pi-gen-base/
+build/pi-gen-fresh/
+build/pi-gen-full/
+build/pi-gen-new/
+build/rootfs/
+build/preboot/
+build/configs/
+build/scripts/
+build/stages/
+pwnbullseye4-project-setup-with-hermes-*.json
+goal/
+verify.sh
+PLAN.md
+SPEC.md
+src/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.eggs/
+dist/
+*.whl
+
+# AI models (too large for git)
+ai/models/*.onnx
+ai/models/*.zip
+ai/models/*.nn
+ai/models/*.pt
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Docker
+.docker/
