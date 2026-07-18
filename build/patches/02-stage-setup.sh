@@ -27,9 +27,11 @@ for stage in stage4 stage5; do
     fi
 done
 
-# Copy our custom stage into pi-gen (Docker build doesn't support symlinks pointing outside the volume)
+# Copy jayofelony's stage3 into pi-gen
 if [ -d "${STAGE_SRC}" ]; then
-    cp -r "${STAGE_SRC}" "${PIGEN_DIR}/stage3"
+    # Remove pi-gen default stage3 to prevent copying into stage3/stage3
+    rm -rf "${PIGEN_DIR}/stage3"
+    cp -a "${STAGE_SRC}" "${PIGEN_DIR}/stage3"
     echo "Copied stage3 → ${PIGEN_DIR}/stage3"
 else
     echo "ERROR: Stage source not found: ${STAGE_SRC}"
