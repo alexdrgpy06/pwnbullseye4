@@ -60,20 +60,30 @@ path = sys.argv[1]
 with open(path, 'r') as f:
     content = f.read()
 
-# 1. Upgrade pip/setuptools before install, make cache purge non-fatal
+# Normalize line endings (source file may have CRLF)
+content = content.replace('\r\n', '\n')
+
+# 1. Replace python3 -m venv with virtualenv (avoids locale.normalize bug in QEMU chroot)
+content = content.replace(
+    'python3 -m venv /opt/.pwn/ --system-site-packages',
+    'virtualenv --system-site-packages /opt/.pwn/'
+)
+
+# 2. Upgrade pip/setuptools before install, make cache purge non-fatal
 content = content.replace(
     'pip3 cache purge',
     'pip3 install --upgrade pip setuptools wheel\npip3 cache purge || true'
 )
 
-# 2. After git clone, patch pyproject.toml to allow Python 3.9
-old_clone = 'git clone https://github.com/jayofelony/pwnagotchi.git'
-new_clone = old_clone + """
+# 3. After git clone, patch pyproject.toml to allow Python 3.9
+#    Also remove the original "cd pwnagotchi/" since we cd explicitly
+old_block = "    git clone https://github.com/jayofelony/pwnagotchi.git\n    cd pwnagotchi/"
+new_block = """    git clone https://github.com/jayofelony/pwnagotchi.git
     cd /opt/pwnagotchi
     sed -i 's/requires-python = ">=3.11"/requires-python = ">=3.9"/' pyproject.toml
     sed -i 's/Programming Language :: Python :: 3.11/Programming Language :: Python :: 3.9/' pyproject.toml"""
 
-content = content.replace(old_clone, new_clone)
+content = content.replace(old_block, new_block)
 
 with open(path, 'w') as f:
     f.write(content)
