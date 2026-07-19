@@ -98,6 +98,13 @@ PATCH_EOF
         sed -i 's|git clone https://github.com/ZerBea/hcxtools.git hcxtools|git clone --depth 1 --branch 6.2.4 https://github.com/ZerBea/hcxtools.git hcxtools|' "$HCXTOOLS_SCRIPT"
         echo "Pinned hcxtools to v6.2.4 for OpenSSL 1.1 compatibility"
     fi
+    
+    # Fix /boot/firmware → /boot for Bullseye (Bookworm moved boot to /boot/firmware)
+    PATCHES_SCRIPT="${PIGEN_DIR}/stage3/07-patches/00-run.sh"
+    if [ -f "$PATCHES_SCRIPT" ]; then
+        sed -i 's|/boot/firmware/|/boot/|g' "$PATCHES_SCRIPT"
+        echo "Patched ${PATCHES_SCRIPT}: /boot/firmware → /boot"
+    fi
 else
     echo "ERROR: Stage source not found: ${STAGE_SRC}"
     exit 1
