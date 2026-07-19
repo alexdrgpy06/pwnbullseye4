@@ -33,6 +33,16 @@ if [ -d "${STAGE_SRC}" ]; then
     rm -rf "${PIGEN_DIR}/stage3"
     cp -a "${STAGE_SRC}" "${PIGEN_DIR}/stage3"
     echo "Copied stage3 → ${PIGEN_DIR}/stage3"
+    
+    # Fix bullseye package compatibility (downgrade or remove bookworm-specific packages)
+    PKG_FILE="${PIGEN_DIR}/stage3/01-pwn-packages/00-packages-nr"
+    if [ -f "$PKG_FILE" ]; then
+        sed -i '/liblgpio-dev/d' "$PKG_FILE"
+        sed -i '/libdtovl0/d' "$PKG_FILE"
+        sed -i '/python3-luma/d' "$PKG_FILE"
+        sed -i 's/libtiff6/libtiff5/g' "$PKG_FILE"
+        echo "Patched ${PKG_FILE} for Bullseye compatibility"
+    fi
 else
     echo "ERROR: Stage source not found: ${STAGE_SRC}"
     exit 1
