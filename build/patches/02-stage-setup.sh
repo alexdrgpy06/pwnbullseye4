@@ -43,6 +43,7 @@ if [ -d "${STAGE_SRC}" ]; then
         sed -i '/libcurl-ocaml-dev/d' "$PKG_FILE"
         sed -i '/libssl-ocaml-dev/d' "$PKG_FILE"
         sed -i 's/libtiff6/libtiff5/g' "$PKG_FILE"
+        echo "" >> "$PKG_FILE"
         echo "python3-venv" >> "$PKG_FILE"
         echo "Patched ${PKG_FILE} for Bullseye compatibility"
     fi
