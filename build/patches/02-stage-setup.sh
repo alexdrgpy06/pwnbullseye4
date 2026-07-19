@@ -47,6 +47,13 @@ if [ -d "${STAGE_SRC}" ]; then
         echo "python3-venv" >> "$PKG_FILE"
         echo "Patched ${PKG_FILE} for Bullseye compatibility"
     fi
+    
+    # Fix pip cache purge returning exit code 1 on Bullseye when cache is empty
+    CHROOT_SCRIPT="${PIGEN_DIR}/stage3/05-install-pwnagotchi/01-run-chroot.sh"
+    if [ -f "$CHROOT_SCRIPT" ]; then
+        sed -i 's/pip3 cache purge/pip3 cache purge || true/g' "$CHROOT_SCRIPT"
+        echo "Patched ${CHROOT_SCRIPT} to ignore pip cache purge errors"
+    fi
 else
     echo "ERROR: Stage source not found: ${STAGE_SRC}"
     exit 1
