@@ -50,10 +50,36 @@ if [ -d "${STAGE_SRC}" ]; then
     
     # Fix pip cache purge returning exit code 1 on Bullseye when cache is empty
     # and fix Debian's setuptools install_layout bug by upgrading pip and setuptools in the venv
+    # and relax python_requires for Bullseye's Python 3.9
     CHROOT_SCRIPT="${PIGEN_DIR}/stage3/05-install-pwnagotchi/01-run-chroot.sh"
     if [ -f "$CHROOT_SCRIPT" ]; then
-        sed -i 's/pip3 cache purge/pip3 install --upgrade pip setuptools wheel\npip3 cache purge || true/g' "$CHROOT_SCRIPT"
-        echo "Patched ${CHROOT_SCRIPT} to upgrade setuptools and ignore pip cache errors"
+        python3 - "$CHROOT_SCRIPT" << 'PATCH_EOF'
+import sys
+
+path = sys.argv[1]
+with open(path, 'r') as f:
+    content = f.read()
+
+# 1. Upgrade pip/setuptools before install, make cache purge non-fatal
+content = content.replace(
+    'pip3 cache purge',
+    'pip3 install --upgrade pip setuptools wheel\npip3 cache purge || true'
+)
+
+# 2. After git clone, patch pyproject.toml to allow Python 3.9
+old_clone = 'git clone https://github.com/jayofelony/pwnagotchi.git'
+new_clone = old_clone + """
+    cd /opt/pwnagotchi
+    sed -i 's/requires-python = ">=3.11"/requires-python = ">=3.9"/' pyproject.toml
+    sed -i 's/Programming Language :: Python :: 3.11/Programming Language :: Python :: 3.9/' pyproject.toml"""
+
+content = content.replace(old_clone, new_clone)
+
+with open(path, 'w') as f:
+    f.write(content)
+
+print(f"Patched {path} for Bullseye Python 3.9 compatibility")
+PATCH_EOF
     fi
 else
     echo "ERROR: Stage source not found: ${STAGE_SRC}"
