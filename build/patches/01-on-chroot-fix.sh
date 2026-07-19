@@ -62,13 +62,14 @@ new_function = '''on_chroot() {
 \t\tmount --bind /sys "${ROOTFS_DIR}/sys"
 \tfi
 
-\tDEBIAN_FRONTEND=noninteractive \\
-\tDEBCONF_NONINTERACTIVE_SEEN=true \\
-\tHOME=/root \\
-\tPATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \\
-\tLC_ALL=C \\
-\tLANG=C \\
-\tchroot "${ROOTFS_DIR}" "$@"
+\t/usr/bin/env -i \\
+\t\tHOME=/root \\
+\t\tPATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \\
+\t\tDEBIAN_FRONTEND=noninteractive \\
+\t\tDEBCONF_NONINTERACTIVE_SEEN=true \\
+\t\tLC_ALL=C \\
+\t\tLANG=C \\
+\t\tbash -c 'if [ $# -gt 1 ]; then chroot "$1" "${@:2}"; else chroot "$1" /bin/bash -e; fi' -- "${ROOTFS_DIR}" "$@"
 }
 export -f on_chroot'''
 
