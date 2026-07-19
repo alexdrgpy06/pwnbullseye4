@@ -40,6 +40,8 @@ if [ -d "${STAGE_SRC}" ]; then
         sed -i '/liblgpio-dev/d' "$PKG_FILE"
         sed -i '/libdtovl0/d' "$PKG_FILE"
         sed -i '/python3-luma/d' "$PKG_FILE"
+        sed -i '/libcurl-ocaml-dev/d' "$PKG_FILE"
+        sed -i '/libssl-ocaml-dev/d' "$PKG_FILE"
         sed -i 's/libtiff6/libtiff5/g' "$PKG_FILE"
         echo "Patched ${PKG_FILE} for Bullseye compatibility"
     fi
