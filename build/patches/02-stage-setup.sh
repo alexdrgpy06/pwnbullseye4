@@ -91,6 +91,13 @@ with open(path, 'w') as f:
 print(f"Patched {path} for Bullseye Python 3.9 compatibility")
 PATCH_EOF
     fi
+    
+    # Pin hcxtools to v6.2.4 (last version compatible with OpenSSL 1.1 on Bullseye)
+    HCXTOOLS_SCRIPT="${PIGEN_DIR}/stage3/06-hcxtools/00-run-chroot.sh"
+    if [ -f "$HCXTOOLS_SCRIPT" ]; then
+        sed -i 's|git clone https://github.com/ZerBea/hcxtools.git hcxtools|git clone --depth 1 --branch 6.2.4 https://github.com/ZerBea/hcxtools.git hcxtools|' "$HCXTOOLS_SCRIPT"
+        echo "Pinned hcxtools to v6.2.4 for OpenSSL 1.1 compatibility"
+    fi
 else
     echo "ERROR: Stage source not found: ${STAGE_SRC}"
     exit 1
