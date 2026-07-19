@@ -49,10 +49,11 @@ if [ -d "${STAGE_SRC}" ]; then
     fi
     
     # Fix pip cache purge returning exit code 1 on Bullseye when cache is empty
+    # and fix Debian's setuptools install_layout bug by upgrading pip and setuptools in the venv
     CHROOT_SCRIPT="${PIGEN_DIR}/stage3/05-install-pwnagotchi/01-run-chroot.sh"
     if [ -f "$CHROOT_SCRIPT" ]; then
-        sed -i 's/pip3 cache purge/pip3 cache purge || true/g' "$CHROOT_SCRIPT"
-        echo "Patched ${CHROOT_SCRIPT} to ignore pip cache purge errors"
+        sed -i 's/pip3 cache purge/pip3 install --upgrade pip setuptools wheel\npip3 cache purge || true/g' "$CHROOT_SCRIPT"
+        echo "Patched ${CHROOT_SCRIPT} to upgrade setuptools and ignore pip cache errors"
     fi
 else
     echo "ERROR: Stage source not found: ${STAGE_SRC}"
