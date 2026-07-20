@@ -120,6 +120,9 @@ jobs:
           # Fix pi-gen export-image prerun.sh invalid ext4 feature
           bash build/patches/03-export-image-fix.sh pi-gen
 
+          # Inject OS Optimizations for Pi Zero 2 W
+          bash build/patches/04-os-optimizations.sh pi-gen
+
           # Verify stage3 is copied
           ls -la pi-gen/stage3/
 
@@ -127,6 +130,7 @@ jobs:
         if: steps.check.outputs.skip != 'true'
         run: |
           cp build/config pi-gen/config
+          echo "TARGET_ARCH=\"${{ matrix.arch }}\"" >> pi-gen/config
           # Append arch-specific settings
           if [ "${{ matrix.arch }}" = "armv7" ]; then
             echo "" >> pi-gen/config
