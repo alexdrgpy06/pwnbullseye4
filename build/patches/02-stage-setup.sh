@@ -75,20 +75,23 @@ content = content.replace(
     'pip3 install --upgrade pip setuptools wheel\npip3 cache purge || true'
 )
 
-# 3. After git clone, patch pyproject.toml to allow Python 3.9
-#    Also remove the original "cd pwnagotchi/" since we cd explicitly
+# 3. After git clone, clone v2.8.9 tag and install pre-built PyTorch/Torchvision wheels
 old_block = "    git clone https://github.com/jayofelony/pwnagotchi.git\n    cd pwnagotchi/"
-new_block = """    git clone https://github.com/jayofelony/pwnagotchi.git
-    cd /opt/pwnagotchi
-    sed -i 's/requires-python = ">=3.11"/requires-python = ">=3.9"/' pyproject.toml
-    sed -i 's/Programming Language :: Python :: 3.11/Programming Language :: Python :: 3.9/' pyproject.toml"""
+new_block = """    git clone --depth 1 --branch v2.8.9 https://github.com/jayofelony/pwnagotchi.git pwnagotchi
+    cd pwnagotchi/
+    echo "=== Pre-installing PyTorch and Torchvision wheels ==="
+    wget https://github.com/Sniffleupagus/Torch4Pizero/releases/download/v1.0.0/torch-2.1.0a0+gitunknown-cp39-cp39-linux_armv6l.whl
+    wget https://github.com/Sniffleupagus/Torch4Pizero/releases/download/v1.0.0/torchvision-0.16.0a0-cp39-cp39-linux_armv6l.whl
+    pip3 install torch-2.1.0a0+gitunknown-cp39-cp39-linux_armv6l.whl
+    pip3 install torchvision-0.16.0a0-cp39-cp39-linux_armv6l.whl
+    rm torch-2.1.0a0+gitunknown-cp39-cp39-linux_armv6l.whl torchvision-0.16.0a0-cp39-cp39-linux_armv6l.whl"""
 
 content = content.replace(old_block, new_block)
 
 with open(path, 'w') as f:
     f.write(content)
 
-print(f"Patched {path} for Bullseye Python 3.9 compatibility")
+print(f"Patched {path} for Bullseye Python 3.9 compatibility and PyTorch pre-installation")
 PATCH_EOF
     fi
     
