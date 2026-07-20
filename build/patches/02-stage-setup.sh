@@ -69,22 +69,22 @@ content = content.replace(
     'virtualenv --system-site-packages /opt/.pwn/'
 )
 
-# 2. Upgrade pip/setuptools before install, make cache purge non-fatal
+# 2. Upgrade pip/setuptools before install, make cache purge non-fatal, and pre-install PyTorch wheels
 content = content.replace(
     'pip3 cache purge',
-    'pip3 install --upgrade pip setuptools wheel\npip3 cache purge || true'
+    '''pip3 install --upgrade pip setuptools wheel
+echo "=== Pre-installing PyTorch and Torchvision wheels ==="
+wget https://github.com/Sniffleupagus/Torch4Pizero/releases/download/v1.0.0/torch-2.1.0a0+gitunknown-cp39-cp39-linux_armv6l.whl
+wget https://github.com/Sniffleupagus/Torch4Pizero/releases/download/v1.0.0/torchvision-0.16.0a0-cp39-cp39-linux_armv6l.whl
+pip3 install torch-2.1.0a0+gitunknown-cp39-cp39-linux_armv6l.whl
+pip3 install torchvision-0.16.0a0-cp39-cp39-linux_armv6l.whl
+rm torch-2.1.0a0+gitunknown-cp39-cp39-linux_armv6l.whl torchvision-0.16.0a0-cp39-cp39-linux_armv6l.whl
+pip3 cache purge || true'''
 )
 
-# 3. After git clone, clone v2.8.9 tag and install pre-built PyTorch/Torchvision wheels
+# 3. Clone v2.8.9 tag instead of default branch
 old_block = "    git clone https://github.com/jayofelony/pwnagotchi.git\n    cd pwnagotchi/"
-new_block = """    git clone --depth 1 --branch v2.8.9 https://github.com/jayofelony/pwnagotchi.git pwnagotchi
-    cd pwnagotchi/
-    echo "=== Pre-installing PyTorch and Torchvision wheels ==="
-    wget https://github.com/Sniffleupagus/Torch4Pizero/releases/download/v1.0.0/torch-2.1.0a0+gitunknown-cp39-cp39-linux_armv6l.whl
-    wget https://github.com/Sniffleupagus/Torch4Pizero/releases/download/v1.0.0/torchvision-0.16.0a0-cp39-cp39-linux_armv6l.whl
-    pip3 install torch-2.1.0a0+gitunknown-cp39-cp39-linux_armv6l.whl
-    pip3 install torchvision-0.16.0a0-cp39-cp39-linux_armv6l.whl
-    rm torch-2.1.0a0+gitunknown-cp39-cp39-linux_armv6l.whl torchvision-0.16.0a0-cp39-cp39-linux_armv6l.whl"""
+new_block = "    git clone --depth 1 --branch v2.8.9 https://github.com/jayofelony/pwnagotchi.git pwnagotchi\n    cd pwnagotchi/"
 
 content = content.replace(old_block, new_block)
 

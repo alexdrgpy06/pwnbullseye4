@@ -104,7 +104,7 @@ jobs:
       - name: Clone jayofelony pwnagotchi repo
         if: steps.check.outputs.skip != 'true'
         run: |
-          git clone --depth 1 --branch v2.8.9 https://github.com/jayofelony/pwnagotchi.git pwnagotchi_src
+          git clone --depth 1 https://github.com/jayofelony/pwnagotchi.git pwnagotchi_src
           echo "Pwnagotchi cloned"
 
       - name: Apply patches to pi-gen
