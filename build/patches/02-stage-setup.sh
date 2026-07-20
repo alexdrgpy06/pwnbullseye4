@@ -120,7 +120,7 @@ echo "dtparam=spi=on" >> "${ROOTFS_DIR}/boot/config.txt"
 echo "dtparam=i2c_arm=on" >> "${ROOTFS_DIR}/boot/config.txt"
 echo "dtparam=i2c_vc=on" >> "${ROOTFS_DIR}/boot/config.txt"
 echo "enable_uart=1" >> "${ROOTFS_DIR}/boot/config.txt"
-echo "dtoverlay=dwc2" >> "${ROOTFS_DIR}/boot/config.txt"
+echo "dtoverlay=dwc2,dr_mode=peripheral" >> "${ROOTFS_DIR}/boot/config.txt"
 
 # Ensure dwc2 and g_ether modules are loaded
 if ! grep -q "dwc2" "${ROOTFS_DIR}/etc/modules"; then
@@ -129,6 +129,10 @@ fi
 if ! grep -q "g_ether" "${ROOTFS_DIR}/etc/modules"; then
     echo "g_ether" >> "${ROOTFS_DIR}/etc/modules"
 fi
+
+# Set static MAC addresses for g_ether to ensure stable Windows/macOS network gadget detection
+mkdir -p "${ROOTFS_DIR}/etc/modprobe.d"
+echo "options g_ether host_addr=de:ad:be:ef:00:01 dev_addr=de:ad:be:ef:00:02" > "${ROOTFS_DIR}/etc/modprobe.d/g_ether.conf"
 
 # Add modules-load=dwc2,g_ether to cmdline.txt
 if [ -f "${ROOTFS_DIR}/boot/cmdline.txt" ]; then
