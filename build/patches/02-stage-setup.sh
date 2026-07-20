@@ -104,6 +104,47 @@ PATCH_EOF
     if [ -f "$PATCHES_SCRIPT" ]; then
         sed -i 's|/boot/firmware/|/boot/|g' "$PATCHES_SCRIPT"
         echo "Patched ${PATCHES_SCRIPT}: /boot/firmware → /boot"
+        
+        # Copy default config.toml to files directory
+        cp ./config/config.toml.example "${PIGEN_DIR}/stage3/07-patches/files/config.toml"
+        echo "Copied default config.toml to stage3 patches"
+
+        # Append hardware and static IP configuration for usb0 interface
+        cat << 'EOF' >> "$PATCHES_SCRIPT"
+
+# Install default config.toml
+install -v -m 644 files/config.toml "${ROOTFS_DIR}/etc/pwnagotchi/config.toml"
+
+# Configure /boot/config.txt and /boot/cmdline.txt for hardware (SPI, I2C, gadget mode)
+echo "dtparam=spi=on" >> "${ROOTFS_DIR}/boot/config.txt"
+echo "dtparam=i2c_arm=on" >> "${ROOTFS_DIR}/boot/config.txt"
+echo "dtparam=i2c_vc=on" >> "${ROOTFS_DIR}/boot/config.txt"
+echo "enable_uart=1" >> "${ROOTFS_DIR}/boot/config.txt"
+echo "dtoverlay=dwc2" >> "${ROOTFS_DIR}/boot/config.txt"
+
+# Ensure dwc2 and g_ether modules are loaded
+if ! grep -q "dwc2" "${ROOTFS_DIR}/etc/modules"; then
+    echo "dwc2" >> "${ROOTFS_DIR}/etc/modules"
+fi
+if ! grep -q "g_ether" "${ROOTFS_DIR}/etc/modules"; then
+    echo "g_ether" >> "${ROOTFS_DIR}/etc/modules"
+fi
+
+# Add modules-load=dwc2,g_ether to cmdline.txt
+if [ -f "${ROOTFS_DIR}/boot/cmdline.txt" ]; then
+    if ! grep -q "modules-load=dwc2,g_ether" "${ROOTFS_DIR}/boot/cmdline.txt"; then
+        sed -i 's/rootwait/rootwait modules-load=dwc2,g_ether/' "${ROOTFS_DIR}/boot/cmdline.txt"
+    fi
+fi
+
+# Configure usb0 static IP in /etc/dhcpcd.conf
+if [ -f "${ROOTFS_DIR}/etc/dhcpcd.conf" ]; then
+    if ! grep -q "interface usb0" "${ROOTFS_DIR}/etc/dhcpcd.conf"; then
+        echo -e "\ninterface usb0\nstatic ip_address=10.0.0.2/24\nstatic routers=10.0.0.1\nstatic domain_name_servers=8.8.8.8" >> "${ROOTFS_DIR}/etc/dhcpcd.conf"
+        echo "Configured static IP for usb0 in dhcpcd.conf"
+    fi
+fi
+EOF
     fi
 else
     echo "ERROR: Stage source not found: ${STAGE_SRC}"
