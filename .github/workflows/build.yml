@@ -17,7 +17,7 @@ on:
         options:
           - ''
           - armhf
-          - armv7
+          - arm64
 
 env:
   PIGEN_REPO: https://github.com/RPi-Distro/pi-gen.git
@@ -33,8 +33,10 @@ jobs:
         include:
           - arch: armhf
             img_suffix: armhf
-          - arch: armv7
-            img_suffix: armv7
+            description: "32-bit Bullseye (Pi 0 & Pi 02W)"
+          - arch: arm64
+            img_suffix: arm64
+            description: "64-bit Bullseye (Pi 02W)"
     steps:
       - name: Check if this arch should build
         id: check
@@ -58,7 +60,6 @@ jobs:
         run: |
           echo "=== Disk before cleanup ==="
           df -h /
-          # Remove large preinstalled packages we don't need
           sudo rm -rf /usr/share/dotnet
           sudo rm -rf /usr/local/lib/android
           sudo rm -rf /opt/ghc
@@ -85,15 +86,12 @@ jobs:
       - name: Set up QEMU binfmt
         if: steps.check.outputs.skip != 'true'
         run: |
-          # Ensure ARM binary execution works via QEMU
+          # Ensure both ARM 32-bit and ARM 64-bit binary execution work via QEMU
           sudo update-binfmts --enable qemu-arm || true
-          # Verify
-          if [ -f /proc/sys/fs/binfmt_misc/qemu-arm ]; then
-            echo "qemu-arm binfmt registered"
-            cat /proc/sys/fs/binfmt_misc/qemu-arm
-          else
-            echo "WARNING: qemu-arm binfmt not registered, build may fail"
-          fi
+          sudo update-binfmts --enable qemu-aarch64 || true
+          
+          echo "=== Registered binfmts ==="
+          ls -la /proc/sys/fs/binfmt_misc/ || true
 
       - name: Clone pi-gen (bullseye branch)
         if: steps.check.outputs.skip != 'true'
@@ -114,13 +112,13 @@ jobs:
           chmod +x build/patches/*.sh
           bash build/patches/01-on-chroot-fix.sh pi-gen
 
-          # Set up stage structure using official jayofelony stage3
+          # Set up stage structure using official jayofelony stage3 and PWNGHOST-RS overlays
           bash build/patches/02-stage-setup.sh pi-gen "$(pwd)/pwnagotchi_src/stage3"
 
           # Fix pi-gen export-image prerun.sh invalid ext4 feature
           bash build/patches/03-export-image-fix.sh pi-gen
 
-          # Inject OS Optimizations for Pi Zero 2 W
+          # Inject OS Optimizations
           bash build/patches/04-os-optimizations.sh pi-gen
 
           # Verify stage3 is copied
@@ -129,17 +127,17 @@ jobs:
       - name: Write pi-gen config
         if: steps.check.outputs.skip != 'true'
         run: |
-          cp build/config pi-gen/config
-          echo "TARGET_ARCH=\"${{ matrix.arch }}\"" >> pi-gen/config
-          # Append arch-specific settings
-          if [ "${{ matrix.arch }}" = "armv7" ]; then
-            echo "" >> pi-gen/config
-            echo "# ARMv7 optimizations for Pi Zero 2 W" >> pi-gen/config
+          if [ -f "build/configs/config-${{ matrix.arch }}" ]; then
+            cp "build/configs/config-${{ matrix.arch }}" pi-gen/config
+          else
+            cp build/config pi-gen/config
+            echo "ARCH=\"${{ matrix.arch }}\"" >> pi-gen/config
           fi
-          echo "=== Config ==="
+
+          echo "=== Target Config (${{ matrix.arch }}) ==="
           cat pi-gen/config
 
-      - name: Build image with pi-gen
+      - name: Build image with pi-gen natively (NO Docker)
         if: steps.check.outputs.skip != 'true'
         run: |
           cd pi-gen
@@ -147,14 +145,8 @@ jobs:
           # Make all scripts executable
           find . -name "*.sh" -exec chmod +x {} \;
 
-          # Use pi-gen's Docker build method
-          if [ -f build-docker.sh ]; then
-            echo "=== Using build-docker.sh ==="
-            sudo ./build-docker.sh
-          else
-            echo "=== Using build.sh directly ==="
-            sudo ./build.sh
-          fi
+          echo "=== Running pi-gen native build.sh ==="
+          sudo ./build.sh
 
       - name: Locate and rename output image
         if: steps.check.outputs.skip != 'true'
@@ -163,11 +155,9 @@ jobs:
           echo "=== Looking for built images ==="
           find pi-gen/deploy -name "*.img*" -o -name "*.zip" 2>/dev/null | head -20
 
-          # Find the image file
           IMG=$(find pi-gen/deploy -name "*.img.xz" -o -name "*.img.gz" -o -name "*.img.zip" | head -1)
 
           if [ -z "$IMG" ]; then
-            # Try uncompressed
             IMG=$(find pi-gen/deploy -name "*.img" | head -1)
             if [ -n "$IMG" ]; then
               echo "Compressing image..."
@@ -182,7 +172,6 @@ jobs:
             exit 1
           fi
 
-          # Rename with date and arch
           DATE=$(date +%Y%m%d)
           FINAL_NAME="pwnbullseye4-${{ matrix.img_suffix }}-${DATE}.img.xz"
           cp "$IMG" "${FINAL_NAME}"
@@ -190,7 +179,6 @@ jobs:
           echo "image_path=${FINAL_NAME}" >> "$GITHUB_OUTPUT"
           echo "image_name=${FINAL_NAME}" >> "$GITHUB_OUTPUT"
 
-          # Generate SHA256
           sha256sum "${FINAL_NAME}" > "${FINAL_NAME}.sha256"
           echo "sha256_path=${FINAL_NAME}.sha256" >> "$GITHUB_OUTPUT"
 
@@ -231,13 +219,19 @@ jobs:
 
             Built from commit ${{ github.sha }}
 
-            ### Images
-            | Image | Architecture | Device |
-            |-------|-------------|--------|
-            | `pwnbullseye4-armhf-*.img.xz` | armhf (32-bit) | Pi Zero W |
-            | `pwnbullseye4-armv7-*.img.xz` | armv7 (32-bit) | Pi Zero 2 W |
+            ### Included Bullseye Images
+            | Image | Architecture | Device Target |
+            |-------|-------------|---------------|
+            | `pwnbullseye4-armhf-*.img.xz` | 32-bit (`armhf`) | Raspberry Pi Zero W / Pi Zero 2 W |
+            | `pwnbullseye4-arm64-*.img.xz` | 64-bit (`arm64`) | Raspberry Pi Zero 2 W |
 
-            ### Flash
+            ### System Integrity Features Ported from PWNGHOST-RS:
+            - **ZRAM Data/Log Mounts**: Eliminates SD-card write churn and prevents corruption.
+            - **Safe Shutdown Handler**: Clean unmount & sync before power-off.
+            - **WLAN Keepalive**: Monitors and auto-recovers wireless monitor mode.
+            - **BT PAN Tethering**: Systemd managed Bluetooth pairing and network sharing daemons.
+
+            ### Flash Instructions
             ```bash
             xzcat pwnbullseye4-*.img.xz | sudo dd of=/dev/sdX bs=4M status=progress
             ```

@@ -112,11 +112,26 @@ PATCH_EOF
         cp ./config/config.toml.example "${PIGEN_DIR}/stage3/07-patches/files/config.toml"
         echo "Copied default config.toml to stage3 patches"
 
-        # Append hardware and static IP configuration for usb0 interface
+        # Copy overlay files (PWNGHOST-RS systemd units and helper binaries/scripts)
+        if [ -d "./build/overlay" ]; then
+            cp -a ./build/overlay "${PIGEN_DIR}/stage3/07-patches/files/"
+            echo "Copied PWNGHOST-RS system integrity overlay to stage3 patches"
+        fi
+
+        # Append hardware, overlay installation, and systemd enablement to PATCHES_SCRIPT
         cat << 'EOF' >> "$PATCHES_SCRIPT"
 
 # Install default config.toml
 install -v -m 644 files/config.toml "${ROOTFS_DIR}/etc/pwnagotchi/config.toml"
+
+# Install PWNGHOST-RS overlay files
+if [ -d "files/overlay" ]; then
+    cp -a files/overlay/* "${ROOTFS_DIR}/"
+    chmod +x "${ROOTFS_DIR}"/usr/local/bin/* 2>/dev/null || true
+    chmod +x "${ROOTFS_DIR}"/usr/bin/monstart "${ROOTFS_DIR}"/usr/bin/monstop 2>/dev/null || true
+    chmod +x "${ROOTFS_DIR}"/lib/systemd/system-shutdown/* 2>/dev/null || true
+    echo "Installed PWNGHOST-RS overlay files into rootfs"
+fi
 
 # Configure /boot/config.txt and /boot/cmdline.txt for hardware (SPI, I2C, gadget mode)
 echo "dtparam=spi=on" >> "${ROOTFS_DIR}/boot/config.txt"
@@ -151,6 +166,18 @@ if [ -f "${ROOTFS_DIR}/etc/dhcpcd.conf" ]; then
         echo "Configured static IP for usb0 in dhcpcd.conf"
     fi
 fi
+
+# Enable PWNGHOST-RS ported system integrity services in chroot
+on_chroot << 'CHROOT_SERVICES'
+systemctl enable bt-agent.service || true
+systemctl enable wlan_keepalive.service || true
+systemctl enable zram-data.service || true
+systemctl enable zram-log.service || true
+systemctl enable rsync-zram.timer || true
+systemctl enable buffer-cleaner.timer || true
+systemctl enable safe-shutdown.service || true
+CHROOT_SERVICES
+
 EOF
     fi
 else
